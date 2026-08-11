@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: onlycu
+    env: node
+    plan: free
+    branch: arena/019ff12a-onlycu
+    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_BUCKET
+        value: onlycu-media
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_PRESIGNED_EXPIRES
+        value: 60
+      - key: QVAPAY_APP_ID
+        sync: false
+      - key: QVAPAY_APP_SECRET
+        sync: false
+      - key: QVAPAY_BASE_URL
+        value: https://qvapay.com/api/v1
+      - key: CUP_CARD_NUMBER
+        sync: false
+      - key: CUP_CARD_HOLDER
+        sync: false
+      - key: CUP_RATE
+        value: 320
+      - key: CRYPTO_WEBHOOK_SECRET
+        generateValue: true
+      - key: USDT_TRC20_ADDRESS
+        sync: false
+      - key: TON_ADDRESS
+        sync: false
+      - key: ADMIN_TELEGRAM_IDS
+        sync: false
