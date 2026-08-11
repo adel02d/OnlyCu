@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import AgeGate from "@/components/AgeGate";
 import { WatermarkedViewer } from "@/components/WatermarkedViewer";
+import { DrmBadge } from "@/components/DrmBadge";
 
 export default function Home() {
   const [ageOk, setAgeOk] = useState(false);
@@ -55,8 +56,9 @@ export default function Home() {
             </section>
 
             <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-              <h3 className="font-semibold">Demo visor protegido (presigned 60s + watermark estudio)</h3>
-              <p className="text-xs text-zinc-500 mb-3">La URL expira en 60s. Marca principal: handle del creador. ID del espectador solo como hash corto opcional y notificado.</p>
+              <h3 className="font-semibold">Demo visor DRM — Módulo Anti-Filtración</h3>
+              <DrmBadge />
+              <p className="text-xs text-zinc-500 my-3">Presigned 60s + watermark móvil + mosaico + hash anon. Solo CUP es manual (QvaPay/cripto son automáticos). Detalles en <span className="font-mono">docs/DRM.md</span></p>
               <WatermarkedViewer
                 src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
                 creatorHandle="mariana.fit"
