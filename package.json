@@ -1,0 +1,41 @@
+{
+  "name": "onlycu",
+  "version": "0.1.0",
+  "description": "OnlyCu - Plataforma de suscripciones para creadores en Telegram Mini App (Cuba: QvaPay + Cripto + CUP manual) con verificación +18",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 3000",
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@prisma/client": "5.14.0",
+    "@telegram-apps/sdk": "1.1.3",
+    "zod": "3.23.8",
+    "jsonwebtoken": "9.0.2",
+    "qrcode": "1.5.3",
+    "@aws-sdk/client-s3": "3.614.0",
+    "@aws-sdk/s3-presigned-post": "3.614.0",
+    "@aws-sdk/s3-request-presigner": "3.614.0"
+  },
+  "devDependencies": {
+    "typescript": "5.5.3",
+    "@types/node": "20.14.10",
+    "@types/react": "18.3.3",
+    "@types/jsonwebtoken": "9.0.6",
+    "@types/qrcode": "1.5.5",
+    "prisma": "5.14.0",
+    "autoprefixer": "10.4.19",
+    "postcss": "8.4.39",
+    "tailwindcss": "3.4.6",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.5"
+  }
+}

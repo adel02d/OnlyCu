@@ -1,0 +1,258 @@
+// OnlyCu - Esquema relacional para plataforma de creadores en TMA
+// Diseñado para contexto Cuba: QvaPay + Cripto (USDT/TON) + CUP manual
+// Con verificación +18, consentimiento y trazabilidad
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Usuario de Telegram - base para fans y creadores
+model User {
+  id               String   @id @default(cuid())
+  telegramId       BigInt   @unique // Telegram user.id (int64)
+  username         String?
+  firstName        String?
+  lastName         String?
+  photoUrl         String?
+  isCreator        Boolean  @default(false)
+  // Verificación +18
+  isAdultVerified  Boolean  @default(false)
+  adultVerifiedAt  DateTime?
+  birthDate        DateTime? // opcional si se pide fecha
+  // Consentimiento y términos
+  acceptedTermsAt  DateTime?
+  acceptedTermsVersion String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  creatorProfile   CreatorProfile?
+  subscriptions    Subscription[] @relation("Subscriber")
+  payments         Payment[]
+  purchases        Purchase[]
+  ageVerifications AgeVerification[]
+  manualProofs     ManualProof[]
+
+  @@index([telegramId])
+}
+
+model CreatorProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName   String
+  bio           String?  @db.Text
+  avatarUrl     String?
+  bannerUrl     String?
+  // Precios base
+  subscriptionPrice Float // en USD (referencia), cobro se convierte a CUP/QvaPay/cripto
+  currency      String   @default("USD")
+  isVerified    Boolean  @default(false) // verificación identidad +18 del creador
+  isActive      Boolean  @default(true)
+  // Para reportes y moderación
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  posts         Post[]
+  subscriptions Subscription[] @relation("CreatorSubs")
+  tiers         SubscriptionTier[]
+}
+
+model SubscriptionTier {
+  id          String   @id @default(cuid())
+  creatorId   String
+  creator     CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  name        String // Ej: Básico, VIP
+  price       Float
+  interval    String   @default("month") // month
+  benefits    String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id         String   @id @default(cuid())
+  subscriberId String
+  subscriber   User     @relation("Subscriber", fields: [subscriberId], references: [id], onDelete: Cascade)
+  creatorId  String
+  creator    CreatorProfile @relation("CreatorSubs", fields: [creatorId], references: [id], onDelete: Cascade)
+  tierId     String?
+  tier       SubscriptionTier? @relation(fields: [tierId], references: [id])
+  status     SubscriptionStatus @default(PENDING)
+  currentPeriodEnd DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  payments   Payment[]
+
+  @@unique([subscriberId, creatorId])
+  @@index([creatorId, status])
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  creatorId   String
+  creator     CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title       String?
+  caption     String?  @db.Text
+  // Monetización
+  isPPV       Boolean  @default(false)
+  ppvPrice    Float? // null = incluido en suscripción
+  // Media
+  media       Media[]
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  purchases   Purchase[]
+
+  @@index([creatorId, createdAt])
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  s3Key     String   // nunca exponer directo, solo via presigned URL
+  mimeType  String
+  sizeBytes Int?
+  width     Int?
+  height    Int?
+  duration  Float? // para video
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+}
+
+model Purchase {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId       String
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  paymentId    String   @unique
+  payment      Payment  @relation(fields: [paymentId], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  amount        Float
+  currency      String   // USD, CUP, USDT, TON
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  // Proveedores
+  provider      String? // qvapay, ton, usdt-trc20, manual_cup
+  providerTxId  String?  @unique
+  // Para manual
+  manualProofId String?  @unique
+  manualProof   ManualProof? @relation(fields: [manualProofId], references: [id])
+
+  metadata      Json? // payload del proveedor
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  purchase      Purchase?
+
+  @@index([userId, status])
+  @@index([method, status])
+}
+
+enum PaymentMethod {
+  QVAPAY
+  CRYPTO_USDT
+  CRYPTO_TON
+  MANUAL_CUP
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFYING
+  COMPLETED
+  FAILED
+  REFUNDED
+  REJECTED
+}
+
+model ManualProof {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  currency    String   @default("CUP")
+  transferRef String? // últimos 4 dígitos / referencia
+  screenshotUrl String? // S3 key del comprobante
+  status      ManualProofStatus @default(PENDING)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  payment     Payment?
+
+  @@index([status, createdAt])
+}
+
+enum ManualProofStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  type        String // payout, fee, refund
+  amount      Float
+  currency    String
+  fromUserId  String?
+  toUserId    String?
+  paymentId   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+}
+
+model AgeVerification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  method      String   // self_declare_18, telegram_age, id_check
+  declaredAt  DateTime @default(now())
+  ipHash      String? // hash anonimizado, no IP en claro
+  userAgent   String?
+  // Para auditoría
+  accepted    Boolean  @default(true)
+}
+
+// Para moderación y seguridad - NO geobloqueo punitivo, solo logs de abuso
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String?
+  targetType  String // post, user, payment
+  targetId    String
+  reason      String
+  details     String? @db.Text
+  status      String   @default("open")
+  createdAt   DateTime @default(now())
+}
