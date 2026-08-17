@@ -1,0 +1,25 @@
+name = "onlycu-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-15"
+compatibility_flags = ["nodejs_compat"]
+
+# Replace these values before the first deploy. Do not put secrets in this file.
+[vars]
+APP_ORIGIN = "https://REPLACE_WITH_YOUR_PAGES_DOMAIN.pages.dev"
+API_ORIGIN = "https://REPLACE_WITH_YOUR_WORKER.workers.dev"
+PLATFORM_USDT_NETWORK = "TRC20"
+PLATFORM_USDT_ADDRESS = "REPLACE_WITH_PLATFORM_USDT_WALLET"
+ADULT_DECLARATION_VERSION = "2026-08"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "onlycu-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "onlycu-media"
+
+[triggers]
+crons = ["0 * * * *"]

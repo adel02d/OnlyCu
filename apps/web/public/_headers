@@ -1,0 +1,6 @@
+/*
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https://*.workers.dev; connect-src 'self' https://*.workers.dev https://*.telegram.org; frame-src https://web.telegram.org https://*.telegram.org; frame-ancestors https://web.telegram.org https://*.telegram.org; form-action 'self'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)
+  X-Robots-Tag: noindex, nofollow, noarchive
