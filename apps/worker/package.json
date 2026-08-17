@@ -1,0 +1,25 @@
+{
+  "name": "@onlycu/worker",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --ip 0.0.0.0",
+    "deploy": "wrangler deploy",
+    "deploy:dry-run": "wrangler deploy --dry-run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "d1:migrate:local": "wrangler d1 migrations apply onlycu-db --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply onlycu-db --remote"
+  },
+  "dependencies": {
+    "decimal.js": "^10.6.0",
+    "hono": "4.13.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260815.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.7",
+    "wrangler": "4.123.0"
+  }
+}

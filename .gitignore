@@ -1,0 +1,20 @@
+# Dependencies and build artefacts
+node_modules/
+.next/
+apps/web/out/
+coverage/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+apps/worker/.dev.vars
+apps/worker/.wrangler/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/

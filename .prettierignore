@@ -1,0 +1,9 @@
+# Framework/client code generated at build time
+apps/web/next-env.d.ts
+apps/web/out/
+apps/worker/.wrangler/
+
+# Dependencies and generated runtime artifacts
+node_modules/
+.next/
+coverage/

@@ -1,0 +1,30 @@
+{
+  "name": "onlycu",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Cloudflare-native Telegram Mini App for direct creator payments and manual verification.",
+  "workspaces": [
+    "apps/web",
+    "apps/worker"
+  ],
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n worker,web -c cyan,magenta \"npm run dev --workspace=@onlycu/worker\" \"npm run dev --workspace=@onlycu/web\"",
+    "build": "npm run build --workspace=@onlycu/web && npm run typecheck --workspace=@onlycu/worker",
+    "typecheck": "npm run typecheck --workspace=@onlycu/worker && npm run typecheck --workspace=@onlycu/web",
+    "test": "npm run test --workspace=@onlycu/worker",
+    "worker:deploy": "npm run deploy --workspace=@onlycu/worker",
+    "worker:dry-run": "npm run deploy:dry-run --workspace=@onlycu/worker",
+    "worker:d1:migrate:local": "npm run d1:migrate:local --workspace=@onlycu/worker",
+    "worker:d1:migrate:remote": "npm run d1:migrate:remote --workspace=@onlycu/worker",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yml,yaml,css}\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.5.3"
+  }
+}
