@@ -18,6 +18,8 @@ apps/bridge/.auth/
 apps/agentkit/.venv/
 apps/agentkit/.env
 apps/agentkit/agentkit.db
+**/__pycache__/
+*.pyc
 
 # OS/editor
 .DS_Store
