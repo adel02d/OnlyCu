@@ -6,7 +6,9 @@ import {
   fetchAgentCatalog,
   fetchAgentChannels,
   fetchAllOrders,
+  fetchConversation,
   fetchConversationOrders,
+  fetchInbox,
   sendAgentMessage,
   setDailyProducts,
   type AgentOrder,
@@ -15,6 +17,7 @@ import {
   type ChannelActivity,
   type ChannelStatus,
   type ChannelVerdict,
+  type InboxChat,
 } from '../lib/agent-api';
 
 type ChatItem = {
@@ -24,7 +27,7 @@ type ChatItem = {
   text?: string;
 };
 
-type Tab = 'chat' | 'orders' | 'channels';
+type Tab = 'chat' | 'whatsapp' | 'orders' | 'channels';
 
 const STORAGE_KEY = 'energixcu-conversation-id';
 
@@ -147,7 +150,8 @@ export function EnergixAgentApp() {
               <nav className="flex rounded-full border border-white/10 bg-grove p-1 text-xs font-semibold">
                 {(
                   [
-                    ['chat', 'Chat'],
+                    ['chat', 'Chat web'],
+                    ['whatsapp', 'WhatsApp'],
                     ['orders', 'Pedidos'],
                     ['channels', 'Conexiones'],
                   ] as const
@@ -246,6 +250,7 @@ export function EnergixAgentApp() {
             </>
           ) : null}
 
+          {tab === 'whatsapp' ? <WhatsAppInbox /> : null}
           {tab === 'orders' ? (
             <OrdersPanel orders={orders} adminKey={adminKey} onAdminKey={setAdminKey} />
           ) : null}
@@ -333,6 +338,139 @@ function FormattedText({ value }: { value: string }) {
         ),
       )}
     </p>
+  );
+}
+
+function WhatsAppInbox() {
+  const [chats, setChats] = useState<InboxChat[]>([]);
+  const [whapiChats, setWhapiChats] = useState<
+    Array<{ id?: string; name?: string; lastMessage?: string }>
+  >([]);
+  const [selected, setSelected] = useState<string>();
+  const [messages, setMessages] = useState<
+    Array<{ id: string; direction: 'IN' | 'OUT'; body: string; created_at: string }>
+  >([]);
+  const [hint, setHint] = useState<string>();
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const inbox = await fetchInbox('WHATSAPP');
+        if (!cancelled) setChats(inbox.chats);
+      } catch {
+        if (!cancelled) setChats([]);
+      }
+      try {
+        const response = await fetch('/agentkit/chats', { cache: 'no-store' });
+        const payload = (await response.json()) as {
+          chats?: Array<{ id?: string; name?: string; lastMessage?: string }>;
+          error?: string;
+        };
+        if (!cancelled) {
+          setWhapiChats(payload.chats ?? []);
+          if (payload.error) setHint(payload.error);
+        }
+      } catch {
+        if (!cancelled) setHint('El kit de WhatsApp no está en marcha.');
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selected) return;
+    void fetchConversation(selected)
+      .then((result) => setMessages(result.messages))
+      .catch(() => setMessages([]));
+  }, [selected]);
+
+  return (
+    <div className="grid flex-1 gap-0 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)]">
+      <aside className="overflow-y-auto border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-watt">
+          Bandeja WhatsApp
+        </p>
+        <p className="mt-2 text-xs leading-5 text-emerald-100/60">
+          Aquí no aparecen tus chats viejos. Solo los que Jose atiende cuando alguien te escribe{' '}
+          <strong>después</strong> de conectar el webhook.
+        </p>
+        {hint ? <p className="mt-2 text-xs text-sun">{hint}</p> : null}
+        {chats.length === 0 && whapiChats.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed border-white/15 p-3 text-sm text-emerald-100/50">
+            Aún no hay conversaciones. Pide a otra persona que te escriba <strong>Hola</strong> a tu
+            número.
+          </p>
+        ) : null}
+        {chats.map((chat) => (
+          <button
+            key={chat.id}
+            type="button"
+            onClick={() => setSelected(chat.id)}
+            className={`mt-2 w-full rounded-xl px-3 py-2 text-left text-sm ${
+              selected === chat.id ? 'bg-watt/20 text-white' : 'bg-grove text-emerald-100/80'
+            }`}
+          >
+            <p className="font-semibold">{chat.displayName || chat.from}</p>
+            <p className="truncate text-xs text-emerald-100/55">{chat.lastBody || 'Sin texto'}</p>
+          </button>
+        ))}
+        {whapiChats.length > 0 ? (
+          <div className="mt-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100/40">
+              Chats en Whapi
+            </p>
+            {whapiChats.slice(0, 12).map((chat) => (
+              <p key={chat.id} className="mt-2 truncate text-xs text-emerald-100/65">
+                {chat.name}: {chat.lastMessage || '—'}
+              </p>
+            ))}
+          </div>
+        ) : null}
+      </aside>
+      <section className="overflow-y-auto p-4">
+        {!selected ? (
+          <div className="rounded-2xl border border-white/10 bg-grove p-4 text-sm leading-6 text-emerald-100/70">
+            <p className="font-semibold text-white">Paso a paso para ver un chat</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-4">
+              <li>Ve a Conexiones y pega el token de Whapi (si aún dice “Falta token”).</li>
+              <li>Whapi debe tener el webhook HTTPS de esa misma pantalla.</li>
+              <li>
+                Desde <strong>otro teléfono</strong> escribe <strong>Hola</strong> al número que
+                vinculaste.
+              </li>
+              <li>Jose responde en WhatsApp. El hilo aparece aquí a la izquierda.</li>
+            </ol>
+            <p className="mt-3 text-xs text-sun">
+              Si te escribes a ti mismo, WhatsApp casi nunca lo manda al agente. Tiene que ser otra
+              persona.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.direction === 'IN' ? 'justify-start' : 'justify-end'}`}
+              >
+                <p
+                  className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                    message.direction === 'IN' ? 'bg-grove' : 'bg-[#005c4b]'
+                  }`}
+                >
+                  {message.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 

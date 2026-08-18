@@ -8,4 +8,4 @@ fi
 if [ ! -f .env ]; then
   cp .env.example .env
 fi
-exec .venv/bin/uvicorn agent.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+exec .venv/bin/uvicorn agent.main:app --host 0.0.0.0 --port "${PORT:-8000}" --reload

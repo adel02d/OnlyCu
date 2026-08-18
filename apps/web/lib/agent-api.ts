@@ -106,6 +106,21 @@ export function fetchAgentChannels() {
   return request<ChannelStatus>('/v1/agent/channels');
 }
 
+export type InboxChat = {
+  id: string;
+  from: string;
+  displayName: string | null;
+  lastMessageAt: string;
+  lastBody: string | null;
+  status: string;
+};
+
+export function fetchInbox(channel: 'WHATSAPP' | 'MESSENGER' = 'WHATSAPP') {
+  return request<{ channel: string; chats: InboxChat[] }>(
+    `/v1/agent/inbox?channel=${encodeURIComponent(channel)}`,
+  );
+}
+
 export function fetchConversation(conversationId: string) {
   return request<{
     conversation: { id: string; stage: string; status: string };

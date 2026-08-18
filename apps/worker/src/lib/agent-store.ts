@@ -440,6 +440,39 @@ export async function loadChannelHealth(db: D1Database): Promise<ChannelHealthRo
   }
 }
 
+export async function listInbox(db: D1Database, channel: AgentChannel, limit = 40) {
+  const rows = await db
+    .prepare(
+      `SELECT c.id, c.external_user_id, c.display_name, c.last_message_at, c.status,
+              (
+                SELECT m.body FROM agent_messages m
+                 WHERE m.conversation_id = c.id
+                 ORDER BY m.created_at DESC LIMIT 1
+              ) AS last_body
+         FROM agent_conversations c
+        WHERE c.channel = ?
+        ORDER BY c.last_message_at DESC
+        LIMIT ?`,
+    )
+    .bind(channel, limit)
+    .all<{
+      id: string;
+      external_user_id: string;
+      display_name: string | null;
+      last_message_at: string;
+      status: string;
+      last_body: string | null;
+    }>();
+  return rows.results.map((row) => ({
+    id: row.id,
+    from: row.external_user_id,
+    displayName: row.display_name,
+    lastMessageAt: row.last_message_at,
+    lastBody: row.last_body,
+    status: row.status,
+  }));
+}
+
 export async function listRecentChannelChats(db: D1Database, channel: AgentChannel, limit = 5) {
   const rows = await db
     .prepare(

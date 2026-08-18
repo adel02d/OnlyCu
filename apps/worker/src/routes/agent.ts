@@ -7,6 +7,7 @@ import { runAgentTurn } from '../lib/agent-service';
 import {
   buildChannelDiagnostics,
   ensureAgentSeed,
+  listInbox,
   listMessages,
   listOrders,
   loadCatalog,
@@ -74,6 +75,12 @@ agentRoutes.post('/v1/agent/chat', async (c) => {
     replies: result.replies,
     order: result.order ?? null,
   });
+});
+
+agentRoutes.get('/v1/agent/inbox', async (c) => {
+  const channel = parseChannel(c.req.query('channel')) ?? 'WHATSAPP';
+  const chats = await listInbox(c.env.DB, channel, 50);
+  return c.json({ channel, chats });
 });
 
 agentRoutes.get('/v1/agent/conversations/:conversationId', async (c) => {

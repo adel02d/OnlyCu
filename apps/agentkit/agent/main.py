@@ -3,6 +3,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from dotenv import load_dotenv, set_key
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -86,6 +87,7 @@ async def webhook_handler(request: Request):
 async def connect(payload: dict):
     token = str(payload.get("token") or "").strip()
     provider = str(payload.get("provider") or "whapi").strip().lower()
+    webhook_url = str(payload.get("webhookUrl") or "").strip()
     if not token:
         raise HTTPException(status_code=400, detail="Token required")
     if provider not in {"whapi", "meta", "twilio"}:
@@ -99,5 +101,96 @@ async def connect(payload: dict):
         set_key(str(ENV_PATH), "META_ACCESS_TOKEN", token)
         os.environ["META_ACCESS_TOKEN"] = token
     os.environ["WHATSAPP_PROVIDER"] = provider
+    webhook_ok = None
+    webhook_error = None
+    if provider == "whapi" and webhook_url.startswith("https://"):
+        set_key(str(ENV_PATH), "PUBLIC_WEBHOOK_URL", webhook_url)
+        os.environ["PUBLIC_WEBHOOK_URL"] = webhook_url
+        webhook_ok, webhook_error = await _whapi_set_webhook(token, webhook_url)
     load_dotenv(ENV_PATH, override=True)
-    return {"saved": True, "provider": provider, "tokenConfigured": True}
+    return {
+        "saved": True,
+        "provider": provider,
+        "tokenConfigured": True,
+        "webhookConfigured": webhook_ok,
+        "webhookError": webhook_error,
+    }
+
+
+@app.get("/chats")
+async def list_whapi_chats():
+    token = os.getenv("WHAPI_TOKEN")
+    if not token:
+        return {"chats": [], "error": "Falta el token de Whapi. Pégalo en Conexiones."}
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.get(
+            "https://gate.whapi.cloud/chats",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+            params={"count": 30},
+        )
+    if response.status_code >= 300:
+        return {"chats": [], "error": f"Whapi {response.status_code}: {response.text[:200]}"}
+    payload = response.json()
+    raw = payload.get("chats") if isinstance(payload, dict) else payload
+    chats = []
+    for item in raw or []:
+        last = item.get("last_message") or {}
+        text = ""
+        if isinstance(last.get("text"), dict):
+            text = str(last.get("text", {}).get("body") or "")
+        elif isinstance(last.get("body"), str):
+            text = last["body"]
+        chats.append(
+            {
+                "id": item.get("id"),
+                "name": item.get("name") or item.get("pushname") or item.get("id"),
+                "lastMessage": text,
+                "timestamp": item.get("timestamp") or last.get("timestamp"),
+            }
+        )
+    return {"chats": chats}
+
+
+async def _whapi_health() -> dict | None:
+    token = os.getenv("WHAPI_TOKEN")
+    if not token:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=12) as client:
+            response = await client.get(
+                "https://gate.whapi.cloud/health",
+                headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+            )
+        if response.status_code >= 300:
+            return {"ok": False, "detail": response.text[:200]}
+        data = response.json()
+        return {"ok": True, "status": data.get("status") or data.get("user", {}).get("id"), "raw": data}
+    except Exception as error:
+        return {"ok": False, "detail": str(error)}
+
+
+async def _whapi_set_webhook(token: str, url: str) -> tuple[bool | None, str | None]:
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.patch(
+                "https://gate.whapi.cloud/settings",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "webhooks": [
+                        {
+                            "url": url,
+                            "mode": "body",
+                            "events": [{"type": "messages", "method": "post"}],
+                        }
+                    ]
+                },
+            )
+        if response.status_code >= 300:
+            return False, response.text[:240]
+        return True, None
+    except Exception as error:
+        return False, str(error)
