@@ -45,6 +45,14 @@
 - [ ] Media entregada por Worker/R2 privado, con token de 60 segundos y watermark visible.
 - [ ] Pruebas de Range requests en Android/iOS/Desktop Telegram.
 
+## Agente EnergixCu
+
+- [ ] Webhooks de WhatsApp y Messenger apuntan a HTTPS del Worker.
+- [ ] `META_WEBHOOK_VERIFY_TOKEN` coincide con el verify token de Meta.
+- [ ] Secretos de envío (`WHATSAPP_*`, `MESSENGER_*`) cargados con `wrangler secret put`.
+- [ ] Firma `X-Hub-Signature-256` activa en producción (`*_APP_SECRET`).
+- [ ] Chat de `/agente` genera ticket con los 5 datos y sólo efectivo/transferencia.
+
 ## Pruebas
 
 - [ ] `npm run format:check`

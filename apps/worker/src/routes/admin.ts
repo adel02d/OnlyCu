@@ -8,7 +8,7 @@ import { parsePositiveAmount, decimalText } from '../lib/money';
 import { notify } from '../lib/notifications';
 
 export const adminRoutes = new Hono<AppEnv>();
-adminRoutes.use('*', authenticate, requireRole('ADMIN', 'MODERATOR'));
+adminRoutes.use('/v1/admin/*', authenticate, requireRole('ADMIN', 'MODERATOR'));
 
 adminRoutes.get('/v1/admin/platform-settings', async (c) => {
   const settings = await c.env.DB.prepare(

@@ -11,6 +11,14 @@ export type Bindings = {
   JWT_SECRET: string;
   PAYMENT_DETAILS_ENCRYPTION_KEY: string;
   PII_HASH_SECRET: string;
+  META_GRAPH_API_VERSION?: string;
+  META_WEBHOOK_VERIFY_TOKEN?: string;
+  WHATSAPP_ACCESS_TOKEN?: string;
+  WHATSAPP_PHONE_NUMBER_ID?: string;
+  WHATSAPP_APP_SECRET?: string;
+  MESSENGER_PAGE_ACCESS_TOKEN?: string;
+  MESSENGER_APP_SECRET?: string;
+  AGENT_ADMIN_KEY?: string;
 };
 
 export type Role = 'MEMBER' | 'CREATOR' | 'ADMIN' | 'MODERATOR';

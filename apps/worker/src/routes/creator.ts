@@ -17,7 +17,7 @@ import { notifyAdmins } from '../lib/notifications';
 import { parseSingleFile, storeCreatorMedia, storeImageProof } from '../lib/storage';
 
 export const creatorRoutes = new Hono<AppEnv>();
-creatorRoutes.use('*', authenticate);
+creatorRoutes.use('/v1/creator/*', authenticate);
 
 creatorRoutes.get('/v1/creator/dashboard', requireRole('CREATOR'), async (c) => {
   const user = currentUser(c);

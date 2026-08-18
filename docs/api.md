@@ -98,6 +98,19 @@ El cliente paga fuera de la plataforma, carga una imagen JPEG/PNG/WebP y el crea
 | `POST /v1/admin/platform-invoices/:id/reject`  | Devuelve factura a estado de pago pendiente.        |
 | `GET /v1/admin/audit-events`                   | Auditoría.                                          |
 
+## Agente EnergixCu (Jose)
+
+| Ruta                                  | Uso                                                     |
+| ------------------------------------- | ------------------------------------------------------- |
+| `GET /v1/agent/catalog`               | Catálogo y métodos de pago (efectivo / transferencia).  |
+| `GET /v1/agent/channels`              | Estado de WhatsApp, Messenger y chat web.               |
+| `POST /v1/agent/chat`                 | Turno de conversación del chat web.                     |
+| `GET /v1/agent/conversations/:id`     | Historial y tickets de una conversación.                |
+| `GET /v1/agent/orders`                | Tickets. Sin admin key sólo acepta `conversationId`.    |
+| `POST /v1/agent/admin/daily-products` | Publica productos nuevos del día (`X-Agent-Admin-Key`). |
+| `GET/POST /v1/whatsapp/webhook`       | Verificación Meta y mensajes WhatsApp.                  |
+| `GET/POST /v1/messenger/webhook`      | Verificación Meta y mensajes Messenger.                 |
+
 ## Operación
 
 | Ruta                        | Uso                                                             |

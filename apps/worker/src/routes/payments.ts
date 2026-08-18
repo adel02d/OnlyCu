@@ -7,7 +7,9 @@ import { decryptSecret } from '../lib/crypto';
 import { parseSingleFile, storeImageProof } from '../lib/storage';
 
 export const paymentRoutes = new Hono<AppEnv>();
-paymentRoutes.use('*', authenticate);
+paymentRoutes.use('/v1/creators/*', authenticate);
+paymentRoutes.use('/v1/payment-claims', authenticate);
+paymentRoutes.use('/v1/payment-claims/*', authenticate);
 
 paymentRoutes.get('/v1/creators/:creatorId/payment-methods', async (c) => {
   const user = currentUser(c);

@@ -4,7 +4,7 @@ import type {
   WatermarkIdentity,
 } from '../components/SecureMediaViewer';
 
-const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? 'http://localhost:3001';
+const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? '';
 
 export type TelegramSession = {
   accessToken: string;

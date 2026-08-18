@@ -29,6 +29,16 @@ No se usa Render, Supabase ni UptimeRobot para la operación principal. Workers 
 - R2 privado; el navegador recibe un token de streaming de media de 60 segundos, no una URL pública del bucket.
 - Watermark dinámico con usuario/ID Telegram en el visor React.
 
+## Agente Jose (EnergixCu)
+
+El Worker incluye a **Jose**, asesor de ventas de EnergixCu, conectado a:
+
+- chat web en `/agente`
+- webhook de **WhatsApp Cloud API** (`/v1/whatsapp/webhook`)
+- webhook de **Facebook Messenger** (`/v1/messenger/webhook`)
+
+Guía de secretos y alta en Meta: [docs/energix-agent.md](docs/energix-agent.md).
+
 ## Inicio local
 
 ```bash
