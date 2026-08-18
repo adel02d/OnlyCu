@@ -6,6 +6,7 @@ import { SEED_PRODUCTS } from '../lib/agent-catalog';
 import { runAgentTurn } from '../lib/agent-service';
 import {
   buildChannelDiagnostics,
+  deleteProduct,
   ensureAgentSeed,
   listInbox,
   listMessages,
@@ -15,6 +16,7 @@ import {
   loadZones,
   publicProduct,
   setDailyProducts,
+  upsertProduct,
 } from '../lib/agent-store';
 import { constantTimeEqual, id, requireJsonObject, string } from '../lib/base';
 
@@ -26,7 +28,7 @@ agentRoutes.use('/v1/agent/*', async (c, next) => {
     c.header('Access-Control-Allow-Origin', origin);
     c.header('Vary', 'Origin');
     c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Agent-Admin-Key');
-    c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    c.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     c.header('Access-Control-Max-Age', '600');
   }
   if (c.req.method === 'OPTIONS') {
@@ -43,6 +45,38 @@ agentRoutes.get('/v1/agent/catalog', async (c) => {
     products: catalog.map((product) => publicProduct(product, c.env.APP_ORIGIN)),
     paymentMethods: ['Efectivo', 'Transferencia'],
   });
+});
+
+agentRoutes.post('/v1/agent/catalog', async (c) => {
+  const payload = requireJsonObject(await c.req.json().catch(() => undefined));
+  const name = string(payload?.name, 120);
+  const model = string(payload?.model, 120);
+  const priceUsd = string(payload?.priceUsd, 20);
+  if (!name || !model || !priceUsd) {
+    return c.json({ error: 'name, model and priceUsd are required' }, 400);
+  }
+  const specs = Array.isArray(payload?.specs)
+    ? payload.specs.filter((item): item is string => typeof item === 'string').slice(0, 8)
+    : [];
+  const product = await upsertProduct(c.env.DB, {
+    id: string(payload?.id, 80),
+    sku: string(payload?.sku, 40),
+    name,
+    model,
+    category: string(payload?.category, 40),
+    description: string(payload?.description, 500),
+    specs,
+    priceUsd,
+    priceCup: string(payload?.priceCup, 20),
+    inStock: payload?.inStock !== false,
+    isNew: payload?.isNew === true,
+  });
+  return c.json({ product: publicProduct(product, c.env.APP_ORIGIN) }, 201);
+});
+
+agentRoutes.delete('/v1/agent/catalog/:productId', async (c) => {
+  const removed = await deleteProduct(c.env.DB, c.req.param('productId'));
+  return removed ? c.json({ deleted: true }) : c.json({ error: 'Product not found' }, 404);
 });
 
 agentRoutes.get('/v1/agent/channels', async (c) => {

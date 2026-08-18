@@ -440,6 +440,90 @@ export async function loadChannelHealth(db: D1Database): Promise<ChannelHealthRo
   }
 }
 
+export async function upsertProduct(
+  db: D1Database,
+  input: {
+    id?: string;
+    sku?: string;
+    name: string;
+    model: string;
+    category?: string;
+    description?: string;
+    specs?: string[];
+    priceUsd: string;
+    priceCup?: string;
+    imagePath?: string;
+    inStock?: boolean;
+    isNew?: boolean;
+  },
+): Promise<AgentProduct> {
+  await ensureAgentSeed(db);
+  const timestamp = now();
+  const productId = input.id ?? `prod_${id().slice(0, 8)}`;
+  const sku = input.sku ?? `EGX-${productId.slice(-6).toUpperCase()}`;
+  const existing = await db
+    .prepare(`SELECT sort_order FROM agent_products WHERE id = ? OR sku = ? LIMIT 1`)
+    .bind(productId, sku)
+    .first<{ sort_order: number }>();
+  const sortOrder = existing?.sort_order ?? Date.now() % 100000;
+  await db
+    .prepare(
+      `INSERT INTO agent_products (
+          id, sku, name, model, category, description, specs_json, price_usd, price_cup,
+          image_path, in_stock, is_new, sort_order, keywords_json, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          sku = excluded.sku,
+          name = excluded.name,
+          model = excluded.model,
+          category = excluded.category,
+          description = excluded.description,
+          specs_json = excluded.specs_json,
+          price_usd = excluded.price_usd,
+          price_cup = excluded.price_cup,
+          image_path = excluded.image_path,
+          in_stock = excluded.in_stock,
+          is_new = excluded.is_new,
+          keywords_json = excluded.keywords_json,
+          updated_at = excluded.updated_at`,
+    )
+    .bind(
+      productId,
+      sku,
+      input.name,
+      input.model,
+      input.category ?? 'ACCESORIO',
+      input.description ?? input.name,
+      JSON.stringify(input.specs ?? []),
+      input.priceUsd,
+      input.priceCup ?? input.priceUsd,
+      input.imagePath ?? '/catalog/panel-550.jpg',
+      input.inStock === false ? 0 : 1,
+      input.isNew ? 1 : 0,
+      sortOrder,
+      JSON.stringify(
+        [input.name, input.model, sku, input.category ?? '']
+          .join(' ')
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((part) => part.length > 2),
+      ),
+      timestamp,
+      timestamp,
+    )
+    .run();
+  const stored = (await loadCatalog(db)).find(
+    (product) => product.id === productId || product.sku === sku,
+  );
+  if (!stored) throw new Error('Product persist failed');
+  return stored;
+}
+
+export async function deleteProduct(db: D1Database, productId: string): Promise<boolean> {
+  const result = await db.prepare(`DELETE FROM agent_products WHERE id = ?`).bind(productId).run();
+  return Boolean(result.meta.changes);
+}
+
 export async function listInbox(db: D1Database, channel: AgentChannel, limit = 40) {
   const rows = await db
     .prepare(

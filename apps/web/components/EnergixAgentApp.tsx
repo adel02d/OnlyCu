@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  createCatalogProduct,
+  deleteCatalogProduct,
   fetchAgentCatalog,
   fetchAgentChannels,
   fetchAllOrders,
@@ -27,7 +29,7 @@ type ChatItem = {
   text?: string;
 };
 
-type Tab = 'chat' | 'whatsapp' | 'orders' | 'channels';
+type Tab = 'chat' | 'whatsapp' | 'catalog' | 'orders' | 'channels';
 
 const STORAGE_KEY = 'energixcu-conversation-id';
 
@@ -251,6 +253,7 @@ export function EnergixAgentApp() {
           ) : null}
 
           {tab === 'whatsapp' ? <WhatsAppInbox /> : null}
+          {tab === 'catalog' ? <CatalogPanel catalog={catalog} onChange={setCatalog} /> : null}
           {tab === 'orders' ? (
             <OrdersPanel orders={orders} adminKey={adminKey} onAdminKey={setAdminKey} />
           ) : null}
@@ -385,9 +388,21 @@ function WhatsAppInbox() {
 
   useEffect(() => {
     if (!selected) return;
-    void fetchConversation(selected)
-      .then((result) => setMessages(result.messages))
-      .catch(() => setMessages([]));
+    let cancelled = false;
+    const load = () =>
+      fetchConversation(selected)
+        .then((result) => {
+          if (!cancelled) setMessages(result.messages);
+        })
+        .catch(() => {
+          if (!cancelled) setMessages([]);
+        });
+    void load();
+    const timer = window.setInterval(() => void load(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [selected]);
 
   return (
@@ -395,6 +410,9 @@ function WhatsAppInbox() {
       <aside className="overflow-y-auto border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-watt">
           Bandeja WhatsApp
+        </p>
+        <p className="mt-1 text-xs text-watt">
+          {chats.filter((chat) => isLive(chat.lastMessageAt)).length} hablando ahora
         </p>
         <p className="mt-2 text-xs leading-5 text-emerald-100/60">
           Aquí no aparecen tus chats viejos. Solo los que Jose atiende cuando alguien te escribe{' '}
@@ -407,19 +425,29 @@ function WhatsAppInbox() {
             número.
           </p>
         ) : null}
-        {chats.map((chat) => (
-          <button
-            key={chat.id}
-            type="button"
-            onClick={() => setSelected(chat.id)}
-            className={`mt-2 w-full rounded-xl px-3 py-2 text-left text-sm ${
-              selected === chat.id ? 'bg-watt/20 text-white' : 'bg-grove text-emerald-100/80'
-            }`}
-          >
-            <p className="font-semibold">{chat.displayName || chat.from}</p>
-            <p className="truncate text-xs text-emerald-100/55">{chat.lastBody || 'Sin texto'}</p>
-          </button>
-        ))}
+        {chats.map((chat) => {
+          const live = isLive(chat.lastMessageAt);
+          return (
+            <button
+              key={chat.id}
+              type="button"
+              onClick={() => setSelected(chat.id)}
+              className={`mt-2 w-full rounded-xl px-3 py-2 text-left text-sm ${
+                selected === chat.id ? 'bg-watt/20 text-white' : 'bg-grove text-emerald-100/80'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold">{chat.displayName || chat.from}</p>
+                {live ? (
+                  <span className="rounded-full bg-watt px-2 py-0.5 text-[10px] font-bold text-leaf">
+                    AHORA
+                  </span>
+                ) : null}
+              </div>
+              <p className="truncate text-xs text-emerald-100/55">{chat.lastBody || 'Sin texto'}</p>
+            </button>
+          );
+        })}
         {whapiChats.length > 0 ? (
           <div className="mt-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100/40">
@@ -470,6 +498,123 @@ function WhatsAppInbox() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function CatalogPanel({
+  catalog,
+  onChange,
+}: {
+  catalog: AgentProduct[];
+  onChange: (products: AgentProduct[]) => void;
+}) {
+  const [name, setName] = useState('');
+  const [model, setModel] = useState('');
+  const [priceUsd, setPriceUsd] = useState('');
+  const [priceCup, setPriceCup] = useState('');
+  const [description, setDescription] = useState('');
+  const [notice, setNotice] = useState<string>();
+
+  const refresh = async () => {
+    const result = await fetchAgentCatalog();
+    onChange(result.products);
+  };
+
+  return (
+    <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
+      <div className="rounded-2xl border border-watt/30 bg-grove p-4">
+        <h2 className="text-base font-semibold text-white">Lo que Jose puede vender</h2>
+        <p className="mt-1 text-sm leading-6 text-emerald-100/65">
+          Este es el inventario real. Si no está aquí, Jose no lo ofrece. Agrega modelo y precio.
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Nombre (Panel solar)"
+            className="rounded-xl border border-white/10 bg-leaf px-3 py-2 text-sm text-white"
+          />
+          <input
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+            placeholder="Modelo (Energix 550W)"
+            className="rounded-xl border border-white/10 bg-leaf px-3 py-2 text-sm text-white"
+          />
+          <input
+            value={priceUsd}
+            onChange={(event) => setPriceUsd(event.target.value)}
+            placeholder="Precio USD"
+            className="rounded-xl border border-white/10 bg-leaf px-3 py-2 text-sm text-white"
+          />
+          <input
+            value={priceCup}
+            onChange={(event) => setPriceCup(event.target.value)}
+            placeholder="Precio CUP (opcional)"
+            className="rounded-xl border border-white/10 bg-leaf px-3 py-2 text-sm text-white"
+          />
+        </div>
+        <textarea
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="Descripción corta"
+          className="mt-2 w-full rounded-xl border border-white/10 bg-leaf px-3 py-2 text-sm text-white"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            void createCatalogProduct({ name, model, priceUsd, priceCup, description })
+              .then(async () => {
+                setName('');
+                setModel('');
+                setPriceUsd('');
+                setPriceCup('');
+                setDescription('');
+                setNotice('Producto agregado. Jose ya puede ofrecerlo.');
+                await refresh();
+              })
+              .catch((cause) => {
+                setNotice(cause instanceof Error ? cause.message : 'No se pudo guardar.');
+              });
+          }}
+          disabled={!name.trim() || !model.trim() || !priceUsd.trim()}
+          className="mt-3 rounded-xl bg-watt px-4 py-2 text-sm font-bold text-leaf disabled:opacity-40"
+        >
+          Agregar al catálogo
+        </button>
+        {notice ? <p className="mt-2 text-xs text-sun">{notice}</p> : null}
+      </div>
+      {catalog.map((product) => (
+        <article key={product.id} className="rounded-2xl border border-white/10 bg-grove p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">
+                {product.name} {product.model}
+              </p>
+              <p className="mt-1 text-xs text-watt">
+                ${product.priceUsd} USD
+                {product.priceCup ? ` · ${product.priceCup} CUP` : ''}
+              </p>
+              {product.description ? (
+                <p className="mt-2 text-sm text-emerald-100/60">{product.description}</p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void deleteCatalogProduct(product.id)
+                  .then(refresh)
+                  .catch((cause) => {
+                    setNotice(cause instanceof Error ? cause.message : 'No se pudo borrar.');
+                  });
+              }}
+              className="text-xs text-red-200"
+            >
+              Quitar
+            </button>
+          </div>
+        </article>
+      ))}
     </div>
   );
 }
@@ -1060,4 +1205,11 @@ function when(value: string | null | undefined): string {
 
 function flag(value: boolean | undefined): string {
   return value ? 'Sí' : 'No';
+}
+
+function isLive(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const stamp = new Date(value).getTime();
+  if (Number.isNaN(stamp)) return false;
+  return Date.now() - stamp < 3 * 60 * 1000;
 }

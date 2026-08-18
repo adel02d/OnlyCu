@@ -23,7 +23,7 @@ app.use('*', async (c, next) => {
       'Access-Control-Allow-Headers',
       'Authorization, Content-Type, Idempotency-Key, Range, X-Agent-Admin-Key',
     );
-    c.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, OPTIONS');
+    c.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
     c.header('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
     c.header('Access-Control-Max-Age', '600');
   }

@@ -102,6 +102,26 @@ export function fetchAgentCatalog() {
   return request<{ products: AgentProduct[]; paymentMethods: string[] }>('/v1/agent/catalog');
 }
 
+export function createCatalogProduct(input: {
+  name: string;
+  model: string;
+  priceUsd: string;
+  priceCup?: string;
+  description?: string;
+  category?: string;
+}) {
+  return request<{ product: AgentProduct }>('/v1/agent/catalog', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteCatalogProduct(productId: string) {
+  return request<{ deleted: true }>(`/v1/agent/catalog/${encodeURIComponent(productId)}`, {
+    method: 'DELETE',
+  });
+}
+
 export function fetchAgentChannels() {
   return request<ChannelStatus>('/v1/agent/channels');
 }
