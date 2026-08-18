@@ -67,6 +67,16 @@ Cuando el cliente confirma los 5 datos (nombre, producto, cantidad, dirección, 
 
 Pago aceptado: **efectivo** o **transferencia** (Transfermóvil / EnZona / MLC-CUP).
 
+## Cómo comprobar que está unido a TU WhatsApp / Messenger
+
+El código solo queda “conectado a tu cuenta” cuando se cumplen las 3 pruebas:
+
+1. **Meta verifica el webhook.** En developers.facebook.com → WhatsApp o Messenger → _Verify and save_. Si el token coincide, Meta muestra verde y `/agente` → Conexiones registra la fecha de verificación.
+2. **Llega un mensaje real.** Escríbele “Hola” al número Cloud API o a la Página. En Conexiones debe aparecer _Último inbound_ (número/PSID enmascarado).
+3. **Jose responde en el teléfono.** Eso exige token de envío (`WHATSAPP_ACCESS_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`, o `MESSENGER_PAGE_ACCESS_TOKEN`).
+
+Si el panel dice _Webhook listo · aún no llega tu cuenta_, el servidor está bien pero Meta todavía no te ha enviado nada. Un WhatsApp personal no funciona: hace falta WhatsApp Cloud API y una Página de Facebook.
+
 ## UI
 
-Abre `/agente` para probar el chat, ver tickets y copiar las URLs de webhook.
+Abre `/agente` → pestaña **Conexiones** para ver el semáforo en vivo.

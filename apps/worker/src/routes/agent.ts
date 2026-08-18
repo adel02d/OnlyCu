@@ -5,7 +5,7 @@ import { handleAgentTurn, type AgentChannel } from '../lib/agent';
 import { SEED_PRODUCTS } from '../lib/agent-catalog';
 import { runAgentTurn } from '../lib/agent-service';
 import {
-  channelStatus,
+  buildChannelDiagnostics,
   ensureAgentSeed,
   listMessages,
   listOrders,
@@ -44,11 +44,11 @@ agentRoutes.get('/v1/agent/catalog', async (c) => {
   });
 });
 
-agentRoutes.get('/v1/agent/channels', (c) => {
+agentRoutes.get('/v1/agent/channels', async (c) => {
   return c.json({
     agent: 'Jose',
     company: 'EnergixCu',
-    channels: channelStatus(c.env),
+    channels: await buildChannelDiagnostics(c.env),
   });
 });
 

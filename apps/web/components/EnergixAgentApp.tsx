@@ -12,7 +12,9 @@ import {
   type AgentOrder,
   type AgentProduct,
   type AgentReply,
+  type ChannelActivity,
   type ChannelStatus,
+  type ChannelVerdict,
 } from '../lib/agent-api';
 
 type ChatItem = {
@@ -84,11 +86,14 @@ export function EnergixAgentApp() {
 
   useEffect(() => {
     if (tab === 'orders') void refreshOrders(conversationId, adminKey || undefined);
-    if (tab === 'channels') {
-      void fetchAgentChannels()
+    if (tab !== 'channels') return;
+    const load = () =>
+      fetchAgentChannels()
         .then(setChannels)
         .catch(() => undefined);
-    }
+    void load();
+    const timer = window.setInterval(() => void load(), 4000);
+    return () => window.clearInterval(timer);
   }, [adminKey, conversationId, refreshOrders, tab]);
 
   const send = useCallback(
@@ -392,14 +397,31 @@ function ChannelsPanel({
 
   return (
     <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
-      <p className="text-sm leading-6 text-emerald-100/70">
-        Jose ya responde en el chat web. Para WhatsApp y Messenger apunta los webhooks de Meta a
-        estas URLs HTTPS y carga los secretos en el Worker.
-      </p>
+      <div className="rounded-2xl border border-sun/30 bg-sun/10 p-4 text-sm leading-6 text-emerald-50">
+        <p className="font-semibold text-sun">Cómo saber si ya está unido a TU cuenta</p>
+        <ol className="mt-2 list-decimal space-y-1 pl-4 text-emerald-100/80">
+          <li>
+            En Meta, pulsa <strong>Verificar y guardar</strong> el webhook. Aquí debe aparecer la
+            fecha de verificación.
+          </li>
+          <li>
+            Escríbele <strong>Hola</strong> a tu número de WhatsApp Business o a tu Página. Aquí
+            debe aparecer el último mensaje recibido.
+          </li>
+          <li>
+            Si Jose responde en el teléfono, está vivo. Si el mensaje llega pero no contesta, faltan
+            los tokens de envío.
+          </li>
+        </ol>
+        <p className="mt-2 text-xs text-emerald-100/60">
+          Un WhatsApp personal no sirve: tiene que ser número de WhatsApp Cloud API y una Página de
+          Facebook para Messenger.
+        </p>
+      </div>
 
       <ChannelCard
         title="WhatsApp Cloud API"
-        enabled={Boolean(channels?.channels.whatsapp.enabled)}
+        channel={channels?.channels.whatsapp}
         url={whatsappUrl}
         rows={[
           ['Verify token', flag(channels?.channels.whatsapp.verifyTokenConfigured)],
@@ -408,16 +430,17 @@ function ChannelsPanel({
           ['Firma X-Hub-Signature-256', flag(channels?.channels.whatsapp.signatureVerification)],
         ]}
         steps={[
-          'Crea una app en developers.facebook.com y añade el producto WhatsApp.',
-          'Configura el webhook con la URL de esta tarjeta y el verify token de META_WEBHOOK_VERIFY_TOKEN.',
-          'Suscribe el campo messages.',
-          'Guarda WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID y WHATSAPP_APP_SECRET con wrangler secret put.',
+          'developers.facebook.com → tu app → WhatsApp → Configuration.',
+          'Callback URL: la de esta tarjeta. Verify token: META_WEBHOOK_VERIFY_TOKEN.',
+          'Suscribe messages y pulsa Verify and save. Si Meta acepta, el webhook está bien.',
+          'Carga WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID y WHATSAPP_APP_SECRET.',
+          'Mándate un Hola desde otro teléfono. Jose debe contestar y este panel debe mostrar el inbound.',
         ]}
       />
 
       <ChannelCard
         title="Facebook Messenger"
-        enabled={Boolean(channels?.channels.messenger.enabled)}
+        channel={channels?.channels.messenger}
         url={messengerUrl}
         rows={[
           ['Verify token', flag(channels?.channels.messenger.verifyTokenConfigured)],
@@ -425,9 +448,11 @@ function ChannelsPanel({
           ['Firma X-Hub-Signature-256', flag(channels?.channels.messenger.signatureVerification)],
         ]}
         steps={[
-          'En la misma app de Meta añade Messenger y una Página de Facebook.',
-          'Webhook: esta URL, mismo verify token, suscripción messages.',
-          'Guarda MESSENGER_PAGE_ACCESS_TOKEN y MESSENGER_APP_SECRET.',
+          'Misma app de Meta → Messenger → Add Callback URL.',
+          'URL de esta tarjeta, mismo verify token, suscripción messages.',
+          'Conecta tu Página y genera un Page access token de larga duración.',
+          'Carga MESSENGER_PAGE_ACCESS_TOKEN y MESSENGER_APP_SECRET.',
+          'Escríbele a la Página desde otra cuenta de Facebook. Si Jose responde, está conectado.',
         ]}
       />
 
@@ -484,29 +509,64 @@ function ChannelsPanel({
 
 function ChannelCard({
   title,
-  enabled,
+  channel,
   url,
   rows,
   steps,
 }: {
   title: string;
-  enabled: boolean;
+  channel?: ChannelActivity;
   url: string;
   rows: Array<[string, string]>;
   steps: string[];
 }) {
+  const verdict = channel?.verdict ?? 'not_configured';
   return (
     <article className="rounded-2xl border border-white/10 bg-grove p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-white">{title}</h2>
         <span
           className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
-            enabled ? 'bg-watt/20 text-watt' : 'bg-white/10 text-emerald-100/60'
+            verdict === 'live'
+              ? 'bg-watt/20 text-watt'
+              : verdict === 'receiving'
+                ? 'bg-sun/20 text-sun'
+                : 'bg-white/10 text-emerald-100/60'
           }`}
         >
-          {enabled ? 'Listo para enviar' : 'Webhook listo · falta token'}
+          {verdictLabel(verdict)}
         </span>
       </div>
+
+      <ul className="mt-3 space-y-1 text-xs text-emerald-100/75">
+        <Check ok={Boolean(channel?.verifyTokenConfigured)} label="Puede verificar el webhook" />
+        <Check
+          ok={Boolean(channel?.lastVerifyAt)}
+          label={`Meta ya verificó${when(channel?.lastVerifyAt)}`}
+        />
+        <Check
+          ok={Boolean(channel?.lastInboundAt)}
+          label={`Llegó un mensaje real${when(channel?.lastInboundAt)}`}
+        />
+        <Check ok={Boolean(channel?.enabled)} label="Tiene token para responder" />
+      </ul>
+
+      {channel?.lastInboundFrom ? (
+        <p className="mt-3 rounded-xl bg-black/25 px-3 py-2 text-xs text-emerald-100/70">
+          Último inbound:{' '}
+          <span className="font-semibold text-white">{channel.lastInboundFrom}</span>
+          {channel.lastInboundPreview ? ` · “${channel.lastInboundPreview}”` : ''}
+        </p>
+      ) : (
+        <p className="mt-3 rounded-xl bg-black/25 px-3 py-2 text-xs text-emerald-100/55">
+          Todavía no ha llegado ningún mensaje de este canal a este servidor.
+        </p>
+      )}
+
+      {channel?.lastError ? (
+        <p className="mt-2 text-xs text-red-200">Último error de envío: {channel.lastError}</p>
+      ) : null}
+
       <p className="mt-3 break-all rounded-xl bg-black/30 px-3 py-2 font-mono text-[11px] text-sun">
         {url}
       </p>
@@ -532,6 +592,28 @@ function ChannelCard({
       </ol>
     </article>
   );
+}
+
+function Check({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li>
+      <span className={ok ? 'text-watt' : 'text-emerald-100/40'}>{ok ? '●' : '○'}</span> {label}
+    </li>
+  );
+}
+
+function verdictLabel(verdict: ChannelVerdict): string {
+  if (verdict === 'live') return 'Conectado y respondiendo';
+  if (verdict === 'receiving') return 'Recibe mensajes · no puede responder';
+  if (verdict === 'webhook_ready') return 'Webhook listo · aún no llega tu cuenta';
+  return 'Sin configurar';
+}
+
+function when(value: string | null | undefined): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return ` · ${date.toLocaleString('es-CU')}`;
 }
 
 function flag(value: boolean | undefined): string {

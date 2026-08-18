@@ -380,6 +380,92 @@ export function resolveReplyMedia(replies: AgentReply[], appOrigin: string): Age
   });
 }
 
+export type ChannelHealthRow = {
+  channel: 'WHATSAPP' | 'MESSENGER';
+  last_verify_at: string | null;
+  last_inbound_at: string | null;
+  last_inbound_from: string | null;
+  last_inbound_preview: string | null;
+  last_error: string | null;
+};
+
+export async function touchChannelHealth(
+  db: D1Database,
+  channel: 'WHATSAPP' | 'MESSENGER',
+  patch: {
+    lastVerifyAt?: string;
+    lastInboundAt?: string;
+    lastInboundFrom?: string;
+    lastInboundPreview?: string;
+    lastError?: string | null;
+  },
+): Promise<void> {
+  const timestamp = now();
+  await db
+    .prepare(
+      `INSERT INTO agent_channel_health (
+          channel, last_verify_at, last_inbound_at, last_inbound_from, last_inbound_preview, last_error, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(channel) DO UPDATE SET
+          last_verify_at = COALESCE(excluded.last_verify_at, agent_channel_health.last_verify_at),
+          last_inbound_at = COALESCE(excluded.last_inbound_at, agent_channel_health.last_inbound_at),
+          last_inbound_from = COALESCE(excluded.last_inbound_from, agent_channel_health.last_inbound_from),
+          last_inbound_preview = COALESCE(excluded.last_inbound_preview, agent_channel_health.last_inbound_preview),
+          last_error = excluded.last_error,
+          updated_at = excluded.updated_at`,
+    )
+    .bind(
+      channel,
+      patch.lastVerifyAt ?? null,
+      patch.lastInboundAt ?? null,
+      patch.lastInboundFrom ?? null,
+      patch.lastInboundPreview ?? null,
+      patch.lastError === undefined ? null : patch.lastError,
+      timestamp,
+    )
+    .run();
+}
+
+export async function loadChannelHealth(db: D1Database): Promise<ChannelHealthRow[]> {
+  try {
+    const rows = await db
+      .prepare(
+        `SELECT channel, last_verify_at, last_inbound_at, last_inbound_from, last_inbound_preview, last_error
+           FROM agent_channel_health`,
+      )
+      .all<ChannelHealthRow>();
+    return rows.results;
+  } catch {
+    return [];
+  }
+}
+
+export async function listRecentChannelChats(db: D1Database, channel: AgentChannel, limit = 5) {
+  const rows = await db
+    .prepare(
+      `SELECT id, external_user_id, display_name, last_message_at, status
+         FROM agent_conversations
+        WHERE channel = ?
+        ORDER BY last_message_at DESC
+        LIMIT ?`,
+    )
+    .bind(channel, limit)
+    .all<{
+      id: string;
+      external_user_id: string;
+      display_name: string | null;
+      last_message_at: string;
+      status: string;
+    }>();
+  return rows.results.map((row) => ({
+    id: row.id,
+    from: maskExternalId(row.external_user_id),
+    displayName: row.display_name,
+    lastMessageAt: row.last_message_at,
+    status: row.status,
+  }));
+}
+
 export function channelStatus(env: Bindings) {
   return {
     web: { enabled: true },
@@ -399,6 +485,67 @@ export function channelStatus(env: Bindings) {
       webhookPath: '/v1/messenger/webhook',
     },
   };
+}
+
+export async function buildChannelDiagnostics(env: Bindings) {
+  const base = channelStatus(env);
+  const healthRows = await loadChannelHealth(env.DB);
+  const health = Object.fromEntries(healthRows.map((row) => [row.channel, row]));
+  const [whatsappChats, messengerChats] = await Promise.all([
+    listRecentChannelChats(env.DB, 'WHATSAPP'),
+    listRecentChannelChats(env.DB, 'MESSENGER'),
+  ]);
+  return {
+    web: { ...base.web, verdict: 'live' as const },
+    whatsapp: diagnoseChannel({
+      ...base.whatsapp,
+      health: health.WHATSAPP,
+      recentChats: whatsappChats,
+    }),
+    messenger: diagnoseChannel({
+      ...base.messenger,
+      health: health.MESSENGER,
+      recentChats: messengerChats,
+    }),
+  };
+}
+
+function diagnoseChannel<T extends { enabled: boolean; verifyTokenConfigured: boolean }>(
+  input: {
+    enabled: boolean;
+    verifyTokenConfigured: boolean;
+    health?: ChannelHealthRow;
+    recentChats: Awaited<ReturnType<typeof listRecentChannelChats>>;
+  } & T,
+) {
+  const { health, recentChats, ...rest } = input;
+  const lastInboundAt = health?.last_inbound_at ?? recentChats[0]?.lastMessageAt ?? null;
+  const lastVerifyAt = health?.last_verify_at ?? null;
+  const verdict =
+    input.enabled && lastInboundAt
+      ? 'live'
+      : lastInboundAt
+        ? 'receiving'
+        : lastVerifyAt || input.verifyTokenConfigured
+          ? 'webhook_ready'
+          : 'not_configured';
+  return {
+    ...rest,
+    lastVerifyAt,
+    lastInboundAt,
+    lastInboundFrom: health?.last_inbound_from
+      ? maskExternalId(health.last_inbound_from)
+      : (recentChats[0]?.from ?? null),
+    lastInboundPreview: health?.last_inbound_preview ?? null,
+    lastError: health?.last_error ?? null,
+    recentChats,
+    verdict,
+  };
+}
+
+function maskExternalId(value: string): string {
+  if (value.length <= 6) return `${value.slice(0, 2)}***`;
+  return `${value.slice(0, 4)}***${value.slice(-2)}`;
 }
 
 function mapProduct(row: ProductRow): AgentProduct {

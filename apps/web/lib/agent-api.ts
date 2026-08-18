@@ -54,25 +54,39 @@ export type AgentProduct = {
   isNew: boolean;
 };
 
+export type ChannelVerdict = 'not_configured' | 'webhook_ready' | 'receiving' | 'live';
+
+export type ChannelActivity = {
+  enabled: boolean;
+  verifyTokenConfigured: boolean;
+  signatureVerification: boolean;
+  webhookPath: string;
+  lastVerifyAt: string | null;
+  lastInboundAt: string | null;
+  lastInboundFrom: string | null;
+  lastInboundPreview: string | null;
+  lastError: string | null;
+  recentChats: Array<{
+    id: string;
+    from: string;
+    displayName: string | null;
+    lastMessageAt: string;
+    status: string;
+  }>;
+  verdict: ChannelVerdict;
+};
+
 export type ChannelStatus = {
   agent: string;
   company: string;
   channels: {
-    web: { enabled: boolean };
-    whatsapp: {
-      enabled: boolean;
+    web: { enabled: boolean; verdict: ChannelVerdict };
+    whatsapp: ChannelActivity & {
       phoneNumberIdConfigured: boolean;
       accessTokenConfigured: boolean;
-      signatureVerification: boolean;
-      verifyTokenConfigured: boolean;
-      webhookPath: string;
     };
-    messenger: {
-      enabled: boolean;
+    messenger: ChannelActivity & {
       pageTokenConfigured: boolean;
-      signatureVerification: boolean;
-      verifyTokenConfigured: boolean;
-      webhookPath: string;
     };
   };
 };
