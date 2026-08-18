@@ -37,9 +37,9 @@ El Worker incluye a **Jose**, asesor de ventas de EnergixCu, conectado a:
 - webhook de **WhatsApp Cloud API** (`/v1/whatsapp/webhook`)
 - webhook de **Facebook Messenger** (`/v1/messenger/webhook`)
 
-Para vincular **tu WhatsApp** con QR (como WhatsApp Web), abre `/agente` → Conexiones y
-escanea desde el teléfono. Eso requiere el puente Node (`apps/bridge`) que ya arranca con
-`npm run dev`. Guía: [docs/energix-agent.md](docs/energix-agent.md).
+WhatsApp se conecta con [whatsapp-agent-kit](https://github.com/alanjmr21/whatsapp-agent-kit)
+vía **Whapi** (QR en su panel). Abre `/agente` → Conexiones, pega el token y apunta el
+webhook a `/agentkit/webhook`. Guía: [docs/energix-agent.md](docs/energix-agent.md).
 
 ## Inicio local
 

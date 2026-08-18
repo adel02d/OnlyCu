@@ -13,7 +13,8 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "dev": "concurrently -n worker,web,bridge -c cyan,magenta,green \"npm run dev --workspace=@onlycu/worker\" \"npm run dev --workspace=@onlycu/web\" \"npm run dev --workspace=@onlycu/bridge\"",
+    "dev": "concurrently -n worker,web,bridge,agentkit -c cyan,magenta,green,yellow \"npm run dev --workspace=@onlycu/worker\" \"npm run dev --workspace=@onlycu/web\" \"npm run dev --workspace=@onlycu/bridge\" \"bash apps/agentkit/dev.sh\"",
+    "agentkit:dev": "bash apps/agentkit/dev.sh",
     "build": "npm run build --workspace=@onlycu/web && npm run typecheck --workspace=@onlycu/worker",
     "typecheck": "npm run typecheck --workspace=@onlycu/worker && npm run typecheck --workspace=@onlycu/web",
     "test": "npm run test --workspace=@onlycu/worker",

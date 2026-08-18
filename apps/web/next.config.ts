@@ -7,6 +7,7 @@ import type { NextConfig } from 'next';
  */
 const apiProxyOrigin = process.env.API_PROXY_ORIGIN ?? 'http://127.0.0.1:8787';
 const bridgeOrigin = process.env.BRIDGE_PROXY_ORIGIN ?? 'http://127.0.0.1:8788';
+const agentkitOrigin = process.env.AGENTKIT_PROXY_ORIGIN ?? 'http://127.0.0.1:8000';
 const isProdBuild = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
@@ -20,6 +21,8 @@ const nextConfig: NextConfig = {
           return [
             { source: '/v1/:path*', destination: `${apiProxyOrigin}/v1/:path*` },
             { source: '/bridge/:path*', destination: `${bridgeOrigin}/bridge/:path*` },
+            { source: '/agentkit', destination: `${agentkitOrigin}/` },
+            { source: '/agentkit/:path*', destination: `${agentkitOrigin}/:path*` },
             { source: '/healthz', destination: `${apiProxyOrigin}/healthz` },
             { source: '/readyz', destination: `${apiProxyOrigin}/readyz` },
           ];

@@ -67,7 +67,20 @@ Cuando el cliente confirma los 5 datos (nombre, producto, cantidad, dirección, 
 
 Pago aceptado: **efectivo** o **transferencia** (Transfermóvil / EnZona / MLC-CUP).
 
-## Vincular WhatsApp con QR (la forma fácil)
+## Conectar WhatsApp con Whapi (recomendado)
+
+El canal de WhatsApp usa [whatsapp-agent-kit](https://github.com/alanjmr21/whatsapp-agent-kit):
+
+1. Crea cuenta en [panel.whapi.cloud](https://panel.whapi.cloud/).
+2. Connect → escanea el QR con WhatsApp (Dispositivos vinculados).
+3. Copia el token del canal.
+4. En `/agente` → **Conexiones** pégalo y pulsa Guardar.
+5. En Whapi, webhook = `https://TU_DOMINIO/agentkit/webhook` (evento `messages`).
+6. Escríbete “Hola”. Jose responde con el mismo motor del chat web.
+
+El kit corre en `apps/agentkit` (`./dev.sh`, puerto 8000). Por defecto `AGENT_BACKEND=jose` llama al Worker. Con `AGENT_BACKEND=claude` y `ANTHROPIC_API_KEY` usa Claude como el repo original.
+
+## Vincular WhatsApp con QR local (Baileys)
 
 Si quieres usar **tu WhatsApp** como en WhatsApp Web:
 

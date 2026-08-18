@@ -397,6 +397,9 @@ function ChannelsPanel({
 
   return (
     <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
+      <WhapiConnectCard />
+      <WhatsAppLinkCard />
+
       <div className="rounded-2xl border border-sun/30 bg-sun/10 p-4 text-sm leading-6 text-emerald-50">
         <p className="font-semibold text-sun">Cómo saber si ya está unido a TU cuenta</p>
         <ol className="mt-2 list-decimal space-y-1 pl-4 text-emerald-100/80">
@@ -504,6 +507,138 @@ function ChannelsPanel({
         {notice ? <p className="mt-2 text-xs text-sun">{notice}</p> : null}
       </div>
     </div>
+  );
+}
+
+type AgentkitStatus = {
+  status?: string;
+  provider?: string;
+  backend?: string;
+  tokenConfigured?: boolean;
+  webhookPath?: string;
+};
+
+function WhapiConnectCard() {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const webhookUrl = `${origin}/agentkit/webhook`;
+  const [status, setStatus] = useState<AgentkitStatus>();
+  const [token, setToken] = useState('');
+  const [notice, setNotice] = useState<string>();
+  const [offline, setOffline] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await fetch('/agentkit/status', { cache: 'no-store' });
+        if (!response.ok) throw new Error('offline');
+        const payload = (await response.json()) as AgentkitStatus;
+        if (!cancelled) {
+          setStatus(payload);
+          setOffline(false);
+        }
+      } catch {
+        if (!cancelled) setOffline(true);
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const save = async () => {
+    setNotice(undefined);
+    try {
+      const response = await fetch('/agentkit/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'whapi', token }),
+      });
+      const payload = (await response.json()) as { saved?: boolean; detail?: string };
+      if (!response.ok) throw new Error(payload.detail ?? 'No se guardó el token');
+      setNotice('Token guardado. Configura el webhook en Whapi y mándate un Hola.');
+      setToken('');
+      setStatus((current) => ({ ...current, tokenConfigured: true }));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'No se pudo guardar');
+    }
+  };
+
+  return (
+    <article className="rounded-2xl border border-watt/40 bg-grove p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-watt">
+            Recomendado · whatsapp-agent-kit
+          </p>
+          <h2 className="mt-1 text-base font-semibold text-white">Conectar WhatsApp con Whapi</h2>
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+            status?.tokenConfigured ? 'bg-watt/20 text-watt' : 'bg-white/10 text-emerald-100/60'
+          }`}
+        >
+          {offline ? 'Kit apagado' : status?.tokenConfigured ? 'Token listo' : 'Falta token'}
+        </span>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-emerald-100/70">
+        Usa el kit{' '}
+        <a className="underline" href="https://github.com/alanjmr21/whatsapp-agent-kit">
+          alanjmr21/whatsapp-agent-kit
+        </a>
+        . El QR se escanea en el panel de Whapi, no aquí. Jose responde igual que en el chat web.
+      </p>
+      <ol className="mt-3 list-decimal space-y-1 pl-4 text-xs leading-5 text-emerald-100/70">
+        <li>
+          Crea cuenta gratis en{' '}
+          <a
+            className="underline"
+            href="https://panel.whapi.cloud/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            panel.whapi.cloud
+          </a>
+          .
+        </li>
+        <li>Canal → Connect → escanea el QR con tu WhatsApp (Dispositivos vinculados).</li>
+        <li>Copia el token del canal y pégalo abajo.</li>
+        <li>En Whapi, webhook URL = la de esta tarjeta. Evento: messages.</li>
+      </ol>
+      <p className="mt-3 break-all rounded-xl bg-black/30 px-3 py-2 font-mono text-[11px] text-sun">
+        {webhookUrl}
+      </p>
+      <button
+        type="button"
+        onClick={() => void navigator.clipboard.writeText(webhookUrl)}
+        className="mt-2 text-xs font-semibold text-watt"
+      >
+        Copiar webhook
+      </button>
+      <div className="mt-3 flex gap-2">
+        <input
+          value={token}
+          onChange={(event) => setToken(event.target.value)}
+          placeholder="Token de Whapi"
+          className="w-full rounded-xl border border-white/10 bg-leaf px-3 py-2 text-sm text-white"
+        />
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={!token.trim()}
+          className="rounded-xl bg-watt px-3 py-2 text-xs font-bold text-leaf disabled:opacity-40"
+        >
+          Guardar
+        </button>
+      </div>
+      {notice ? <p className="mt-2 text-xs text-sun">{notice}</p> : null}
+      <p className="mt-2 text-[11px] text-emerald-100/45">
+        Proveedor: {status?.provider ?? 'whapi'} · cerebro: {status?.backend ?? 'jose'}
+      </p>
+    </article>
   );
 }
 

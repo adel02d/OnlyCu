@@ -9,11 +9,15 @@ coverage/
 .env
 .env.*
 !.env.example
+!apps/agentkit/.env.example
 *.pem
 *.key
 apps/worker/.dev.vars
 apps/worker/.wrangler/
 apps/bridge/.auth/
+apps/agentkit/.venv/
+apps/agentkit/.env
+apps/agentkit/agentkit.db
 
 # OS/editor
 .DS_Store
