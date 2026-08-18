@@ -19,6 +19,7 @@ export type Bindings = {
   MESSENGER_PAGE_ACCESS_TOKEN?: string;
   MESSENGER_APP_SECRET?: string;
   AGENT_ADMIN_KEY?: string;
+  BRIDGE_SECRET?: string;
 };
 
 export type Role = 'MEMBER' | 'CREATOR' | 'ADMIN' | 'MODERATOR';

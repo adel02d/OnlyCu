@@ -507,6 +507,175 @@ function ChannelsPanel({
   );
 }
 
+type BridgeSnapshot = {
+  status: 'starting' | 'qr' | 'connected' | 'logged_out' | 'error';
+  qrDataUrl?: string;
+  pairingCode?: string;
+  phone?: string;
+  error?: string;
+};
+
+function WhatsAppLinkCard() {
+  const [bridge, setBridge] = useState<BridgeSnapshot>();
+  const [offline, setOffline] = useState(false);
+  const [phone, setPhone] = useState('53');
+  const [notice, setNotice] = useState<string>();
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await fetch('/bridge/status', { cache: 'no-store' });
+        if (!response.ok) throw new Error('offline');
+        const payload = (await response.json()) as BridgeSnapshot;
+        if (!cancelled) {
+          setBridge(payload);
+          setOffline(false);
+        }
+      } catch {
+        if (!cancelled) setOffline(true);
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const pair = async () => {
+    setNotice(undefined);
+    try {
+      const response = await fetch('/bridge/pair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const payload = (await response.json()) as BridgeSnapshot & { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'No se pudo generar el código');
+      setBridge(payload);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'No se pudo generar el código');
+    }
+  };
+
+  return (
+    <article className="rounded-2xl border border-watt/30 bg-grove p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-watt">
+            Forma fácil
+          </p>
+          <h2 className="mt-1 text-base font-semibold text-white">Vincular WhatsApp con QR</h2>
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+            bridge?.status === 'connected'
+              ? 'bg-watt/20 text-watt'
+              : 'bg-white/10 text-emerald-100/60'
+          }`}
+        >
+          {offline
+            ? 'Puente apagado'
+            : bridge?.status === 'connected'
+              ? 'Vinculado'
+              : bridge?.status === 'qr'
+                ? 'Esperando escaneo'
+                : 'Arrancando'}
+        </span>
+      </div>
+
+      <p className="mt-3 text-sm leading-6 text-emerald-100/70">
+        Esto funciona como <strong>WhatsApp Web</strong>: en el teléfono ve a{' '}
+        <strong>Dispositivos vinculados</strong> y escanea el código. Jose atenderá los chats de ese
+        número. Messenger no tiene QR; esa vía sigue siendo con Página de Facebook.
+      </p>
+
+      {offline ? (
+        <p className="mt-3 rounded-xl bg-red-500/15 px-3 py-2 text-sm text-red-100">
+          El puente QR no está en marcha. En tu computadora corre `npm run dev` y recarga esta
+          pestaña.
+        </p>
+      ) : null}
+
+      {bridge?.status === 'error' ? (
+        <p className="mt-3 rounded-xl bg-sun/15 px-3 py-2 text-sm text-sun">
+          Esta vista previa no puede abrir sesión con WhatsApp (la red corta el TLS). Abre el
+          proyecto en tu PC, corre `npm run dev` y escanea el QR desde ahí.
+        </p>
+      ) : null}
+
+      {bridge?.status === 'connected' ? (
+        <p className="mt-3 rounded-xl bg-watt/15 px-3 py-2 text-sm text-watt">
+          WhatsApp vinculado{bridge.phone ? ` · ${bridge.phone}` : ''}. Pídele a alguien que te
+          escriba “Hola”.
+        </p>
+      ) : null}
+
+      {bridge?.qrDataUrl ? (
+        <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl bg-white p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={bridge.qrDataUrl} alt="Código QR de WhatsApp" className="h-56 w-56" />
+          <p className="text-center text-xs font-semibold text-leaf">
+            WhatsApp → Menú → Dispositivos vinculados → Vincular dispositivo
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mt-4 rounded-xl border border-white/10 p-3">
+        <p className="text-xs text-emerald-100/60">
+          Si estás en el mismo teléfono y no puedes escanear, usa un código de 8 dígitos:
+        </p>
+        <div className="mt-2 flex gap-2">
+          <input
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="5355..."
+            className="w-full rounded-xl border border-white/10 bg-leaf px-3 py-2 text-sm text-white"
+          />
+          <button
+            type="button"
+            onClick={() => void pair()}
+            className="rounded-xl bg-watt px-3 py-2 text-xs font-bold text-leaf"
+          >
+            Código
+          </button>
+        </div>
+        {bridge?.pairingCode ? (
+          <p className="mt-2 text-center font-mono text-2xl tracking-[0.3em] text-sun">
+            {bridge.pairingCode}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void fetch('/bridge/restart', { method: 'POST' })}
+          className="text-xs font-semibold text-emerald-100/70"
+        >
+          Nuevo QR
+        </button>
+        <button
+          type="button"
+          onClick={() => void fetch('/bridge/logout', { method: 'POST' })}
+          className="text-xs font-semibold text-red-200"
+        >
+          Desvincular
+        </button>
+      </div>
+      {bridge?.error || notice ? (
+        <p className="mt-2 text-xs text-sun">{notice ?? bridge?.error}</p>
+      ) : null}
+      <p className="mt-3 text-[11px] leading-5 text-emerald-100/45">
+        Usa un número de negocio. WhatsApp puede cerrar sesiones de terceros; si se cae, vuelve a
+        escanear.
+      </p>
+    </article>
+  );
+}
+
 function ChannelCard({
   title,
   channel,

@@ -105,6 +105,33 @@ agentRoutes.post('/v1/agent/admin/daily-products', async (c) => {
   return c.json({ updated });
 });
 
+agentRoutes.post('/v1/agent/bridge/turn', async (c) => {
+  const expected = c.env.BRIDGE_SECRET;
+  const supplied = c.req.header('Authorization')?.replace(/^Bearer\s+/i, '');
+  if (
+    !expected ||
+    !supplied ||
+    !constantTimeEqual(new TextEncoder().encode(expected), new TextEncoder().encode(supplied))
+  ) {
+    return c.json({ error: 'Bridge unauthorized' }, 401);
+  }
+  const payload = requireJsonObject(await c.req.json().catch(() => undefined));
+  const message = string(payload?.text, 2000);
+  const from = string(payload?.from, 80);
+  if (!message || !from) return c.json({ error: 'from and text required' }, 400);
+  const result = await runAgentTurn(c.env, {
+    channel: 'WHATSAPP',
+    externalUserId: from,
+    text: message,
+    displayName: string(payload?.displayName, 80),
+  });
+  return c.json({
+    conversationId: result.conversation.id,
+    replies: result.replies,
+    order: result.order ?? null,
+  });
+});
+
 agentRoutes.post('/v1/agent/preview', async (c) => {
   const payload = requireJsonObject(await c.req.json().catch(() => undefined));
   const message = string(payload?.message, 2000);

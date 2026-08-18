@@ -6,6 +6,7 @@ import type { NextConfig } from 'next';
  * In `next dev` we keep the Node server so /v1/* can proxy to the Worker.
  */
 const apiProxyOrigin = process.env.API_PROXY_ORIGIN ?? 'http://127.0.0.1:8787';
+const bridgeOrigin = process.env.BRIDGE_PROXY_ORIGIN ?? 'http://127.0.0.1:8788';
 const isProdBuild = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
@@ -18,6 +19,7 @@ const nextConfig: NextConfig = {
         async rewrites() {
           return [
             { source: '/v1/:path*', destination: `${apiProxyOrigin}/v1/:path*` },
+            { source: '/bridge/:path*', destination: `${bridgeOrigin}/bridge/:path*` },
             { source: '/healthz', destination: `${apiProxyOrigin}/healthz` },
             { source: '/readyz', destination: `${apiProxyOrigin}/readyz` },
           ];

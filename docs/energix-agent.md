@@ -67,7 +67,21 @@ Cuando el cliente confirma los 5 datos (nombre, producto, cantidad, dirección, 
 
 Pago aceptado: **efectivo** o **transferencia** (Transfermóvil / EnZona / MLC-CUP).
 
-## Cómo comprobar que está unido a TU WhatsApp / Messenger
+## Vincular WhatsApp con QR (la forma fácil)
+
+Si quieres usar **tu WhatsApp** como en WhatsApp Web:
+
+1. Arranca `npm run dev` (incluye el puente en el puerto 8788).
+2. Abre `/agente` → **Conexiones**.
+3. En el teléfono: WhatsApp → **Dispositivos vinculados** → escanea el QR.
+4. Si estás en el mismo móvil, pide un **código de 8 dígitos** con el número (código de país, sin +).
+5. Pídele a otra persona que te escriba “Hola”. Jose debe contestar.
+
+Esto no es la API oficial de Meta. Es una sesión de dispositivo vinculado. WhatsApp puede cerrarla. Messenger **no tiene QR**: esa vía sigue siendo con una Página de Facebook.
+
+`BRIDGE_SECRET` debe coincidir entre `apps/worker/.dev.vars` y el proceso del puente.
+
+## Cómo comprobar la API oficial de Meta
 
 El código solo queda “conectado a tu cuenta” cuando se cumplen las 3 pruebas:
 

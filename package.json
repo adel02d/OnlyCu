@@ -5,14 +5,15 @@
   "description": "Cloudflare-native Telegram Mini App for direct creator payments and manual verification.",
   "workspaces": [
     "apps/web",
-    "apps/worker"
+    "apps/worker",
+    "apps/bridge"
   ],
   "engines": {
     "node": ">=22.0.0",
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "dev": "concurrently -n worker,web -c cyan,magenta \"npm run dev --workspace=@onlycu/worker\" \"npm run dev --workspace=@onlycu/web\"",
+    "dev": "concurrently -n worker,web,bridge -c cyan,magenta,green \"npm run dev --workspace=@onlycu/worker\" \"npm run dev --workspace=@onlycu/web\" \"npm run dev --workspace=@onlycu/bridge\"",
     "build": "npm run build --workspace=@onlycu/web && npm run typecheck --workspace=@onlycu/worker",
     "typecheck": "npm run typecheck --workspace=@onlycu/worker && npm run typecheck --workspace=@onlycu/web",
     "test": "npm run test --workspace=@onlycu/worker",

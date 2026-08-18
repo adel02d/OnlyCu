@@ -13,6 +13,7 @@ coverage/
 *.key
 apps/worker/.dev.vars
 apps/worker/.wrangler/
+apps/bridge/.auth/
 
 # OS/editor
 .DS_Store
